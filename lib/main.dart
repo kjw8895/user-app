@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'core/network/api_client.dart';
+import 'features/auth/data/services/auth_service.dart';
+import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/auth/presentation/providers/sms_verification_provider.dart';
 import 'features/auth/presentation/screens/sign_in_screen.dart';
 import 'features/auth/presentation/screens/sign_up_screen.dart';
 
@@ -13,8 +17,32 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    return MultiProvider(
+      providers: [
+        Provider<ApiClient>(
+          create: (_) => ApiClient(),
+        ),
+        Provider<AuthService>(
+          create: (context) => AuthService(
+            apiClient: context.read<ApiClient>(),
+          ),
+        ),
+        Provider<AuthRepository>(
+          create: (context) => AuthRepository(
+            context.read<AuthService>(),
+          ),
+        ),
+        ChangeNotifierProvider<AuthProvider>(
+          create: (context) => AuthProvider(
+            context.read<AuthRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider<SmsVerificationProvider>(
+          create: (context) => SmsVerificationProvider(
+            context.read<AuthRepository>(),
+          ),
+        ),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Auth App',

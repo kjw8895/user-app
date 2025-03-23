@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
-import '../../data/services/auth_service.dart';
+import '../../data/repositories/auth_repository.dart';
+import '../../../../core/errors/failures.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final AuthService _authService = AuthService();
+  final AuthRepository _authRepository;
   bool _isLoading = false;
   String? _error;
   bool _isAuthenticated = false;
 
+  AuthProvider(this._authRepository);
+
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _isAuthenticated;
-  String? get accessToken => _authService.accessToken;
+  String? get accessToken => _authRepository.accessToken;
 
   Future<bool> signIn(String email, String password) async {
     try {
@@ -18,13 +21,13 @@ class AuthProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      final response = await _authService.signIn(email, password);
+      await _authRepository.signIn(email, password);
       _isAuthenticated = true;
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e is Failure ? e.message : e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
@@ -44,7 +47,7 @@ class AuthProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      await _authService.signUp(
+      await _authRepository.signUp(
         email: email,
         password: password,
         confirmPassword: confirmPassword,
@@ -57,7 +60,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e is Failure ? e.message : e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
@@ -65,7 +68,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void signOut() {
-    _authService.signOut();
+    _authRepository.signOut();
     _isAuthenticated = false;
     notifyListeners();
   }
@@ -73,5 +76,28 @@ class AuthProvider extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  Future<String?> sendVerificationSms(String phone) async {
+    try {
+      await _authRepository.sendVerificationSms(phone);
+      return null;
+    } catch (e) {
+      if (e is Failure) return e.message;
+      return 'Failed to send verification SMS: $e';
+    }
+  }
+
+  Future<String?> verifySmsCode(String phone, String code) async {
+    try {
+      final verified = await _authRepository.verifySmsCode(phone, code);
+      if (!verified) {
+        return 'Invalid verification code';
+      }
+      return null;
+    } catch (e) {
+      if (e is Failure) return e.message;
+      return 'Failed to verify SMS code: $e';
+    }
   }
 } 

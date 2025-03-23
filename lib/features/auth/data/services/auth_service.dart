@@ -1,46 +1,44 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/errors/failures.dart';
+import '../../../../core/network/api_client.dart';
 import 'package:email_validator/email_validator.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://localhost:9000';
-  String? _accessToken;
+  final ApiClient _apiClient;
 
-  String? get accessToken => _accessToken;
+  AuthService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
-  Map<String, String> get _headers {
-    final headers = {'Content-Type': 'application/json'};
-    if (_accessToken != null) {
-      headers['Authorization'] = 'Bearer $_accessToken';
-    }
-    return headers;
-  }
+  String? get accessToken => _apiClient.accessToken;
 
   bool _isValidPhoneNumber(String phone) {
-    // Basic phone number validation (10-15 digits)
-    return RegExp(r'^\d{10,15}$').hasMatch(phone);
+    return RegExp(AppConstants.phonePattern).hasMatch(phone);
   }
 
   Future<Map<String, dynamic>> signIn(String email, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/sign-in'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+      final response = await _apiClient.post(
+        AppConstants.signInEndpoint,
+        {
           'email': email,
           'password': password,
-        }),
+        },
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _accessToken = data['accessToken'];
-        return data;
-      } else {
-        throw Exception('Failed to sign in: ${response.statusCode}');
+      
+      final data = response['data'];
+      if (data == null) {
+        throw AuthFailure(message: 'Data not found in response');
       }
+
+      final token = data['accessToken'];
+      if (token == null) {
+        throw AuthFailure(message: 'Access token not found in response');
+      }
+      
+      _apiClient.setToken(token);
+      return response;
     } catch (e) {
-      throw Exception('Failed to sign in: $e');
+      if (e is Failure) rethrow;
+      throw AuthFailure(message: 'Failed to sign in: $e');
     }
   }
 
@@ -54,43 +52,73 @@ class AuthService {
   }) async {
     // Validate email format
     if (!EmailValidator.validate(email)) {
-      throw Exception('Invalid email format');
+      throw ValidationFailure(message: 'Invalid email format');
     }
 
     // Validate phone number
     if (!_isValidPhoneNumber(phone)) {
-      throw Exception('Invalid phone number format');
+      throw ValidationFailure(message: 'Invalid phone number format');
     }
 
     // Validate password match
     if (password != confirmPassword) {
-      throw Exception('Passwords do not match');
+      throw ValidationFailure(message: 'Passwords do not match');
     }
 
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/user/sign-up'),
-        headers: _headers,
-        body: jsonEncode({
+      final response = await _apiClient.post(
+        AppConstants.signUpEndpoint,
+        {
           'email': email,
           'password': password,
           'firstName': firstName,
           'lastName': lastName,
           'phone': phone,
-        }),
+        },
       );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Failed to sign up: ${response.statusCode}');
+      
+      if (response['data'] == null) {
+        throw AuthFailure(message: 'Invalid server response: missing data');
       }
+      print('Sign up server response: $response');
+
+      return response['data'];
     } catch (e) {
-      throw Exception('Failed to sign up: $e');
+      if (e is Failure) rethrow;
+      throw AuthFailure(message: 'Failed to sign up: $e');
     }
   }
 
   void signOut() {
-    _accessToken = null;
+    _apiClient.clearToken();
+  }
+
+  Future<void> sendVerificationSms(String phone) async {
+    try {
+      await _apiClient.post(
+        AppConstants.sendSmsEndpoint,
+        {'phone': phone},
+      );
+    } catch (e) {
+      if (e is Failure) rethrow;
+      throw AuthFailure(message: 'Failed to send verification SMS: $e');
+    }
+  }
+
+  Future<bool> verifySmsCode(String phone, String code) async {
+    try {
+      final response = await _apiClient.post(
+        AppConstants.verifySmsEndpoint,
+        {
+          'phone': phone,
+          'code': code,
+        },
+      );
+      
+      return response['data'] as bool;
+    } catch (e) {
+      if (e is Failure) rethrow;
+      throw AuthFailure(message: 'Failed to verify SMS code: $e');
+    }
   }
 } 
