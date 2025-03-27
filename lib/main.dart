@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/network/api_client.dart';
 import 'features/auth/data/services/auth_service.dart';
+import 'features/auth/data/services/terms_service.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/providers/sms_verification_provider.dart';
+import 'features/auth/presentation/providers/terms_provider.dart';
 import 'features/auth/presentation/screens/sign_in_screen.dart';
 import 'features/auth/presentation/screens/sign_up_screen.dart';
+import 'features/auth/presentation/screens/terms_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,6 +30,11 @@ class MyApp extends StatelessWidget {
             apiClient: context.read<ApiClient>(),
           ),
         ),
+        Provider<TermsService>(
+          create: (context) => TermsService(
+            apiClient: context.read<ApiClient>(),
+          ),
+        ),
         Provider<AuthRepository>(
           create: (context) => AuthRepository(
             context.read<AuthService>(),
@@ -40,6 +48,11 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<SmsVerificationProvider>(
           create: (context) => SmsVerificationProvider(
             context.read<AuthRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider<TermsProvider>(
+          create: (context) => TermsProvider(
+            context.read<TermsService>(),
           ),
         ),
       ],
@@ -67,6 +80,7 @@ class MyApp extends StatelessWidget {
         home: const SignInScreen(),
         routes: {
           '/sign-up': (context) => const SignUpScreen(),
+          '/terms': (context) => const TermsScreen(),
         },
       ),
     );

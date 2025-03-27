@@ -8,6 +8,7 @@ class AppConstants {
   static const String signOutEndpoint = '/auth/sign-out';
   static const String sendSmsEndpoint = '/auth/sms/send';
   static const String verifySmsEndpoint = '/auth/sms/verify';
+  static const String termsEndpoint = '/user/public/terms';
   
   // Storage Keys
   static const String tokenKey = 'auth_token';

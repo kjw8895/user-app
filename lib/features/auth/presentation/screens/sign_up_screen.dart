@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/sms_verification_provider.dart';
 import 'sms_verification_screen.dart';
+import 'terms_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -53,6 +54,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (!_isPhoneVerified) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('휴대폰 인증이 필요합니다')),
+      );
+      return;
+    }
+
+    final agreed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const TermsScreen()),
+    );
+
+    if (agreed != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('약관 동의가 필요합니다')),
       );
       return;
     }

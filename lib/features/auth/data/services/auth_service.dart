@@ -80,7 +80,6 @@ class AuthService {
       if (response['data'] == null) {
         throw AuthFailure(message: 'Invalid server response: missing data');
       }
-      print('Sign up server response: $response');
 
       return response['data'];
     } catch (e) {
